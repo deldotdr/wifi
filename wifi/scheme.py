@@ -169,19 +169,28 @@ class Scheme(object):
         Connects to the network as configured in this scheme.
         """
 
-        subprocess.check_output(['/sbin/ifdown', self.interface], stderr=subprocess.STDOUT)
-        ifup_output = subprocess.check_output(['/sbin/ifup'] + self.as_args(), stderr=subprocess.STDOUT)
+        subprocess.check_output(['/usr/bin/sudo', '/sbin/ifdown', '-i', self.interfaces, self.interface], stderr=subprocess.STDOUT)
+        ifup_output = subprocess.check_output(['/usr/bin/sudo', '/sbin/ifup', '-i', self.interfaces] + self.as_args(), stderr=subprocess.STDOUT)
         ifup_output = ifup_output.decode('utf-8')
 
         return self.parse_ifup_output(ifup_output)
 
     def parse_ifup_output(self, output):
         matches = bound_ip_re.search(output)
+        print output
         if matches:
             return Connection(scheme=self, ip_address=matches.group('ip_address'))
         else:
             raise ConnectionError("Failed to connect to %r" % self)
 
+    def deactivate(self):
+        subprocess.check_output(['/usr/bin/sudo', '/sbin/ifdown', '-i', self.interfaces, self.interface], stderr=subprocess.STDOUT)
+
+    def activate_process_args(self):
+        return ['/usr/bin/sudo', '/sbin/ifup', '-i', self.interfaces] + self.as_args()
+
+    def deactivate_process_args(self):
+        return ['/usr/bin/sudo', '/sbin/ifdown', '-i', self.interfaces, self.interface]
 
 class Connection(object):
     """
